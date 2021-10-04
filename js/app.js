@@ -3,7 +3,10 @@ import fragment from "./shader/fragment.glsl";
 import vertex from "./shader/vertex.glsl";
 import vertexSun from "./shaderSun/vertex.glsl";
 import fragmentSun from "./shaderSun/fragment.glsl";
-import { MeshBasicMaterial } from "three";
+import vertexAround from "./shaderAround/vertex.glsl";
+import fragmentAround from "./shaderAround/fragment.glsl";
+
+
 
 let OrbitControls = require("three-orbit-controls")(THREE);
 
@@ -17,7 +20,7 @@ export default class Sketch {
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(this.width, this.height);
-    this.renderer.setClearColor(0xeeeeee, 1); 
+    this.renderer.setClearColor(0x000000, 1); 
     this.renderer.outputEncoding = THREE.sRGBEncoding;
 
     this.container.appendChild(this.renderer.domElement);
@@ -37,13 +40,42 @@ export default class Sketch {
     this.time = 0;
 
     this.isPlaying = true;
-
+    
+    this.addAround();
     this.addTexture();
     this.addObjects();
     this.resize();
     this.render();
     this.setupResize();
     // this.settings();
+  }
+
+  addAround() {
+    let that = this;
+    this.materialAround = new THREE.ShaderMaterial({
+      extensions: {
+        derivatives: "#extension GL_OES_standard_derivatives : enable"
+      },
+      side: THREE.BackSide,
+      uniforms: {
+        time: { type: "f", value: 0 },
+        uPerlin: { value: null },
+        resolution: { type: "v4", value: new THREE.Vector4() },
+        uvRate1: {
+          value: new THREE.Vector2(1, 1)
+        }
+      },
+      // wireframe: true,
+      // transparent: true,
+      vertexShader: vertexAround,
+      fragmentShader: fragmentAround
+        });
+
+    this.geometry = new THREE.SphereBufferGeometry(1.2, 30, 30);
+
+    this.sunAround = new THREE.Mesh(this.geometry, this.materialAround);
+    // this.sun = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({color: 0xff0000}));
+    this.scene.add(this.sunAround);
   }
 
   addTexture() {
@@ -73,7 +105,7 @@ export default class Sketch {
       vertexShader: vertex,
       fragmentShader: fragment
     });
-    this.geometry = new THREE.SphereBufferGeometry(0.99, 30, 30);
+    this.geometry = new THREE.SphereBufferGeometry(1, 30, 30);
 
     this.perlin = new THREE.Mesh(this.geometry, this.materialPerlin);
     this.scene1.add(this.perlin);

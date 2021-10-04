@@ -36,13 +36,22 @@ float  supersun() {
 
 
 void main(){
-    float brightness = supersun();
-    brightness = brightness*4. + 1.;
+    // float brightness = supersun();
+    // brightness = brightness*4. + 1.;
 // gl_FragColor = vec4();
-float fres = Fresnel(eyeVector, vNormal);
-    brightness += pow(fres, 0.8);
-    vec3 col = brightnessToColor(brightness);
-    gl_FragColor = vec4(col,1.);
+// float fres = Fresnel(eyeVector, vNormal);
+//     brightness += fres;
+    float radial = 1. - vPosition.z;
+    radial *= radial*radial;
+
+    float brightness = 1. + radial*0.83;
+
+    gl_FragColor.rgb = brightnessToColor(brightness)*radial;
+    gl_FragColor.a = radial;
+
+    // vec3 col = brightnessToColor(brightness);
+    // gl_FragColor = vec4(col,1.);
+    //  gl_FragColor = vec4(radial,0.,0.,1.);
     // gl_FragColor = vec4(fres);
 // gl_FragColor = vec4(vLayer2, 1.);
 // gl_FragColor = vec4(vUv,1.,1.);

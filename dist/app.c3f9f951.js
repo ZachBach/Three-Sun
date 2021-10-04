@@ -36894,13 +36894,17 @@ if (typeof window !== 'undefined') {
   }
 }
 },{}],"js/shader/fragment.glsl":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform float time;\nuniform float progress;\nuniform sampler2D texture1;\nuniform vec4 resolution;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nfloat PI=3.141592653589793238;\n\n//\n// Description : Array and textureless GLSL 2D/3D/4D simplex\n//               noise functions.\n//      Author : Ian McEwan, Ashima Arts.\n//  Maintainer : ijm\n//     Lastmod : 20110822 (ijm)\n//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.\n//               Distributed under the MIT License. See LICENSE file.\n//               https://github.com/ashima/webgl-noise\n//\n\nvec4 mod289(vec4 x){\n\treturn x-floor(x*(1./289.))*289.;\n}\n\nfloat mod289(float x){\n\treturn x-floor(x*(1./289.))*289.;\n}\n\nvec4 permute(vec4 x){\n\treturn mod289(((x*34.)+1.)*x);\n}\n\nfloat permute(float x){\n\treturn mod289(((x*34.)+1.)*x);\n}\n\nvec4 taylorInvSqrt(vec4 r)\n{\n\treturn 1.79284291400159-.85373472095314*r;\n}\n\nfloat taylorInvSqrt(float r)\n{\n\treturn 1.79284291400159-.85373472095314*r;\n}\n\nvec4 grad4(float j,vec4 ip)\n{\n\tconst vec4 ones=vec4(1.,1.,1.,-1.);\n\tvec4 p,s;\n\t\n\tp.xyz=floor(fract(vec3(j)*ip.xyz)*7.)*ip.z-1.;\n\tp.w=1.5-dot(abs(p.xyz),ones.xyz);\n\ts=vec4(lessThan(p,vec4(0.)));\n\tp.xyz=p.xyz+(s.xyz*2.-1.)*s.www;\n\t\n\treturn p;\n}\n\n// (sqrt(5) - 1)/4 = F4, used once below\n#define F4.309016994374947451\n\nfloat snoise(vec4 v)\n{\n\tconst vec4 C=vec4(.138196601125011,// (5 - sqrt(5))/20  G4\n\t.276393202250021,// 2 * G4\n\t.414589803375032,// 3 * G4\n-.447213595499958);// -1 + 4 * G4\n\n// First corner\nvec4 i=floor(v+dot(v,vec4(F4)));\nvec4 x0=v-i+dot(i,C.xxxx);\n\n// Other corners\n\n// Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)\nvec4 i0;\nvec3 isX=step(x0.yzw,x0.xxx);\nvec3 isYZ=step(x0.zww,x0.yyz);\n//  i0.x = dot( isX, vec3( 1.0 ) );\ni0.x=isX.x+isX.y+isX.z;\ni0.yzw=1.-isX;\n//  i0.y += dot( isYZ.xy, vec2( 1.0 ) );\ni0.y+=isYZ.x+isYZ.y;\ni0.zw+=1.-isYZ.xy;\ni0.z+=isYZ.z;\ni0.w+=1.-isYZ.z;\n\n// i0 now contains the unique values 0,1,2,3 in each channel\nvec4 i3=clamp(i0,0.,1.);\nvec4 i2=clamp(i0-1.,0.,1.);\nvec4 i1=clamp(i0-2.,0.,1.);\n\n//  x0 = x0 - 0.0 + 0.0 * C.xxxx\n//  x1 = x0 - i1  + 1.0 * C.xxxx\n//  x2 = x0 - i2  + 2.0 * C.xxxx\n//  x3 = x0 - i3  + 3.0 * C.xxxx\n//  x4 = x0 - 1.0 + 4.0 * C.xxxx\nvec4 x1=x0-i1+C.xxxx;\nvec4 x2=x0-i2+C.yyyy;\nvec4 x3=x0-i3+C.zzzz;\nvec4 x4=x0+C.wwww;\n\n// Permutations\ni=mod289(i);\nfloat j0=permute(permute(permute(permute(i.w)+i.z)+i.y)+i.x);\nvec4 j1=permute(permute(permute(permute(\n\t\t\t\ti.w+vec4(i1.w,i2.w,i3.w,1.))\n\t\t\t\t+i.z+vec4(i1.z,i2.z,i3.z,1.))\n\t\t\t\t+i.y+vec4(i1.y,i2.y,i3.y,1.))\n\t\t\t\t+i.x+vec4(i1.x,i2.x,i3.x,1.));\n\t\t\t\t\n\t\t\t\t// Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope\n\t\t\t\t// 7*7*6 = 294, which is close to the ring size 17*17 = 289.\n\t\t\t\tvec4 ip=vec4(1./294.,1./49.,1./7.,0.);\n\t\t\t\t\n\t\t\t\tvec4 p0=grad4(j0,ip);\n\t\t\t\tvec4 p1=grad4(j1.x,ip);\n\t\t\t\tvec4 p2=grad4(j1.y,ip);\n\t\t\t\tvec4 p3=grad4(j1.z,ip);\n\t\t\t\tvec4 p4=grad4(j1.w,ip);\n\t\t\t\t\n\t\t\t\t// Normalise gradients\n\t\t\t\tvec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));\n\t\t\t\tp0*=norm.x;\n\t\t\t\tp1*=norm.y;\n\t\t\t\tp2*=norm.z;\n\t\t\t\tp3*=norm.w;\n\t\t\t\tp4*=taylorInvSqrt(dot(p4,p4));\n\t\t\t\t\n\t\t\t\t// Mix contributions from the five corners\n\t\t\t\tvec3 m0=max(.6-vec3(dot(x0,x0),dot(x1,x1),dot(x2,x2)),0.);\n\t\t\t\tvec2 m1=max(.6-vec2(dot(x3,x3),dot(x4,x4)),0.);\n\t\t\t\tm0=m0*m0;\n\t\t\t\tm1=m1*m1;\n\t\t\t\treturn 49.*(dot(m0*m0,vec3(dot(p0,x0),dot(p1,x1),dot(p2,x2)))\n\t\t\t\t+dot(m1*m1,vec2(dot(p3,x3),dot(p4,x4))));\n\t\t\t\t\n\t\t\t}\n\t\t\t\n\t\t\t// 6 \n\n\t\tfloat fbm(vec4 p){\n\t\t\t\tfloat sum=0.;\n\t\t\t\tfloat amp=1.;\n\t\t\t\tfloat scale=1.;\n\t\t\t\tfor(int i=0;i<6;i++){\n\t\t\t\t\tsum+=snoise(p*scale)*amp;\n\t\t\t\t\tp.w+=100.;\n\t\t\t\t\tamp *= 0.9;\n\t\t\t\t\tscale *=2.;\n\t\t\t\t}\n\t\t\t\treturn sum;\n\t\t\t}\n\n\t\t\t\n\t\t\tvoid main(){\n\t\t\t\t// vec2 newUV = (vUv - vec2(0.5))*resolution.zw + vec2(0.5);\n\t\t\t\t\tvec4 p = vec4(vPosition*3.,time*0.05);\n\t\t\t\t\tfloat noisy = fbm(p);\n\t\t\t\t\tvec4 p1 = vec4(vPosition*2.,time*0.05);\n\t\t\t\t\tfloat spots = max(snoise(p1),0.);\n\t\t\t\t\tgl_FragColor = vec4(noisy);\n\t\t\t\t\t// gl_FragColor=vec4(vPosition,1.);\n\t\t\t\t\tgl_FragColor *= mix(1.,spots,0.7);\n\t\t\t}";
+module.exports = "#define GLSLIFY 1\nuniform float time;\nuniform float progress;\nuniform sampler2D texture1;\nuniform vec4 resolution;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nfloat PI=3.141592653589793238;\n\n//\n// Description : Array and textureless GLSL 2D/3D/4D simplex\n//               noise functions.\n//      Author : Ian McEwan, Ashima Arts.\n//  Maintainer : ijm\n//     Lastmod : 20110822 (ijm)\n//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.\n//               Distributed under the MIT License. See LICENSE file.\n//               https://github.com/ashima/webgl-noise\n//\n\nvec4 mod289(vec4 x){\n\treturn x-floor(x*(1./289.))*289.;\n}\n\nfloat mod289(float x){\n\treturn x-floor(x*(1./289.))*289.;\n}\n\nvec4 permute(vec4 x){\n\treturn mod289(((x*34.)+1.)*x);\n}\n\nfloat permute(float x){\n\treturn mod289(((x*34.)+1.)*x);\n}\n\nvec4 taylorInvSqrt(vec4 r)\n{\n\treturn 1.79284291400159-.85373472095314*r;\n}\n\nfloat taylorInvSqrt(float r)\n{\n\treturn 1.79284291400159-.85373472095314*r;\n}\n\nvec4 grad4(float j,vec4 ip)\n{\n\tconst vec4 ones=vec4(1.,1.,1.,-1.);\n\tvec4 p,s;\n\t\n\tp.xyz=floor(fract(vec3(j)*ip.xyz)*7.)*ip.z-1.;\n\tp.w=1.5-dot(abs(p.xyz),ones.xyz);\n\ts=vec4(lessThan(p,vec4(0.)));\n\tp.xyz=p.xyz+(s.xyz*2.-1.)*s.www;\n\t\n\treturn p;\n}\n\n// (sqrt(5) - 1)/4 = F4, used once below\n#define F4.309016994374947451\n\nfloat snoise(vec4 v)\n{\n\tconst vec4 C=vec4(.138196601125011,// (5 - sqrt(5))/20  G4\n\t.276393202250021,// 2 * G4\n\t.414589803375032,// 3 * G4\n-.447213595499958);// -1 + 4 * G4\n\n// First corner\nvec4 i=floor(v+dot(v,vec4(F4)));\nvec4 x0=v-i+dot(i,C.xxxx);\n\n// Other corners\n\n// Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)\nvec4 i0;\nvec3 isX=step(x0.yzw,x0.xxx);\nvec3 isYZ=step(x0.zww,x0.yyz);\n//  i0.x = dot( isX, vec3( 1.0 ) );\ni0.x=isX.x+isX.y+isX.z;\ni0.yzw=1.-isX;\n//  i0.y += dot( isYZ.xy, vec2( 1.0 ) );\ni0.y+=isYZ.x+isYZ.y;\ni0.zw+=1.-isYZ.xy;\ni0.z+=isYZ.z;\ni0.w+=1.-isYZ.z;\n\n// i0 now contains the unique values 0,1,2,3 in each channel\nvec4 i3=clamp(i0,0.,1.);\nvec4 i2=clamp(i0-1.,0.,1.);\nvec4 i1=clamp(i0-2.,0.,1.);\n\n//  x0 = x0 - 0.0 + 0.0 * C.xxxx\n//  x1 = x0 - i1  + 1.0 * C.xxxx\n//  x2 = x0 - i2  + 2.0 * C.xxxx\n//  x3 = x0 - i3  + 3.0 * C.xxxx\n//  x4 = x0 - 1.0 + 4.0 * C.xxxx\nvec4 x1=x0-i1+C.xxxx;\nvec4 x2=x0-i2+C.yyyy;\nvec4 x3=x0-i3+C.zzzz;\nvec4 x4=x0+C.wwww;\n\n// Permutations\ni=mod289(i);\nfloat j0=permute(permute(permute(permute(i.w)+i.z)+i.y)+i.x);\nvec4 j1=permute(permute(permute(permute(\n\t\t\t\ti.w+vec4(i1.w,i2.w,i3.w,1.))\n\t\t\t\t+i.z+vec4(i1.z,i2.z,i3.z,1.))\n\t\t\t\t+i.y+vec4(i1.y,i2.y,i3.y,1.))\n\t\t\t\t+i.x+vec4(i1.x,i2.x,i3.x,1.));\n\t\t\t\t\n\t\t\t\t// Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope\n\t\t\t\t// 7*7*6 = 294, which is close to the ring size 17*17 = 289.\n\t\t\t\tvec4 ip=vec4(1./294.,1./49.,1./7.,0.);\n\t\t\t\t\n\t\t\t\tvec4 p0=grad4(j0,ip);\n\t\t\t\tvec4 p1=grad4(j1.x,ip);\n\t\t\t\tvec4 p2=grad4(j1.y,ip);\n\t\t\t\tvec4 p3=grad4(j1.z,ip);\n\t\t\t\tvec4 p4=grad4(j1.w,ip);\n\t\t\t\t\n\t\t\t\t// Normalise gradients\n\t\t\t\tvec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));\n\t\t\t\tp0*=norm.x;\n\t\t\t\tp1*=norm.y;\n\t\t\t\tp2*=norm.z;\n\t\t\t\tp3*=norm.w;\n\t\t\t\tp4*=taylorInvSqrt(dot(p4,p4));\n\t\t\t\t\n\t\t\t\t// Mix contributions from the five corners\n\t\t\t\tvec3 m0=max(.6-vec3(dot(x0,x0),dot(x1,x1),dot(x2,x2)),0.);\n\t\t\t\tvec2 m1=max(.6-vec2(dot(x3,x3),dot(x4,x4)),0.);\n\t\t\t\tm0=m0*m0;\n\t\t\t\tm1=m1*m1;\n\t\t\t\treturn 49.*(dot(m0*m0,vec3(dot(p0,x0),dot(p1,x1),dot(p2,x2)))\n\t\t\t\t+dot(m1*m1,vec2(dot(p3,x3),dot(p4,x4))));\n\t\t\t\t\n\t\t\t}\n\t\t\t\n\t\t\t// 6 \n\n\t\tfloat fbm(vec4 p){\n\t\t\t\tfloat sum=0.;\n\t\t\t\tfloat amp=1.;\n\t\t\t\tfloat scale=1.;\n\t\t\t\tfor(int i=0;i<6;i++){\n\t\t\t\t\tsum+=snoise(p*scale)*amp;\n\t\t\t\t\tp.w+=100.;\n\t\t\t\t\tamp *= 0.9;\n\t\t\t\t\tscale *=2.;\n\t\t\t\t}\n\t\t\t\treturn sum;\n\t\t\t}\n\n\t\t\t\n\n\t\t\t\n\t\t\tvoid main(){\n\t\t\t\t// vec2 newUV = (vUv - vec2(0.5))*resolution.zw + vec2(0.5);\n\t\t\t\t\tvec4 p = vec4(vPosition*4.,time*0.0005);\n\t\t\t\t\tfloat noisy = fbm(p);\n\t\t\t\t\tvec4 p1 = vec4(vPosition*2.,time*0.005);\n\t\t\t\t\tfloat spots = max(snoise(p1),0.);\n\t\t\t\t\tgl_FragColor = vec4(noisy);\n\t\t\t\t\t// gl_FragColor=vec4(vPosition,1.);\n\t\t\t\t\tgl_FragColor *= mix(1.,spots,0.7);\n\t\t\t}";
 },{}],"js/shader/vertex.glsl":[function(require,module,exports) {
 module.exports = "#define GLSLIFY 1\nuniform float time;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nuniform vec2 pixels;\nfloat PI = 3.141592653589793238;\nvoid main() {\n  vUv = uv;\n  vPosition = position;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
 },{}],"js/shaderSun/vertex.glsl":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform float time;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nuniform vec2 pixels;\nfloat PI = 3.141592653589793238;\n\nvarying vec3 vLayer0;\nvarying vec3 vLayer1;\nvarying vec3 vLayer2;\n\nmat2 rotate(float a ) {\n  float s = sin(a);\n  float c = cos(a);\n  return mat2(c, -s, s, c);\n}\n\nvoid main() {\n\n  float t = time*0.05;\n\n mat2 rot = rotate(t);\n\n  vec3 p0 = position;\n  p0.yz = rot*p0.yz;\n  vLayer0 = p0;\n\n  vec3 p1 = position;\n  p1.xz = rot*p1.xz;\n  vLayer1 = p1;\n\n  vec3 p2 = position;\n  p2.xy = rot*p2.xy;\n  vLayer2 = p2;\n\n  vUv = uv;\n  vPosition = position;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
+module.exports = "#define GLSLIFY 1\nuniform float time;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nuniform vec2 pixels;\nfloat PI = 3.141592653589793238;\n\nvarying vec3 vLayer0;\nvarying vec3 vLayer1;\nvarying vec3 vLayer2;\nvarying vec3 eyeVector;\nvarying vec3 vNormal;\n\nmat2 rotate(float a ) {\n  float s = sin(a);\n  float c = cos(a);\n  return mat2(c, -s, s, c);\n}\n\nvoid main() {\n  vNormal = normal;\n\n  vec4 worldPosition = modelMatrix *vec4( position, 1.0);\n  eyeVector = normalize(worldPosition.xyz - cameraPosition);\n\n  float t = time*0.005;\n\n mat2 rot = rotate(t);\n\n  vec3 p0 = position;\n  p0.yz = rot*p0.yz;\n  vLayer0 = p0;\n\n mat2 rot1 = rotate(t + 10.);\n  vec3 p1 = position;\n  p1.xz = rot1*p1.xz;\n  vLayer1 = p1;\n\nmat2 rot2 = rotate(t + 30.);\n  vec3 p2 = position;\n  p2.xy = rot2*p2.xy;\n  vLayer2 = p2;\n\n  vUv = uv;\n  vPosition = position;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1. );\n}";
 },{}],"js/shaderSun/fragment.glsl":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform float time;\nuniform float progress;\nuniform sampler2D texture1;\nuniform vec4 resolution;\nuniform samplerCube uPerlin;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nvarying vec3 vLayer0;\nvarying vec3 vLayer1;\nvarying vec3 vLayer2;\nfloat PI=3.141592653589793238;\n\nfloat  supersun() {\n    float sum = 0.;\n    sum += textureCube(uPerlin, vLayer0).r;\n    return sum;\n}\n\nvoid main(){\ngl_FragColor = vec4(supersun());\n// gl_FragColor = vec4(vLayer2, 1.);\n// gl_FragColor = vec4(vUv,1.,1.);\n// gl_FragColor = vec4(1.,0.,1.,1.);\n}";
+module.exports = "#define GLSLIFY 1\nuniform float time;\nuniform float progress;\nuniform sampler2D texture1;\nuniform vec4 resolution;\nuniform samplerCube uPerlin;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nvarying vec3 vNormal;\nvarying vec3 vLayer0;\nvarying vec3 vLayer1;\nvarying vec3 vLayer2;\nvarying vec3 eyeVector;\nfloat PI=3.141592653589793238;\n\nfloat Fresnel(vec3 eyeVector, vec3 worldNormal) {\n  return pow(1.0 + dot(eyeVector, worldNormal), 3.0);\n}\n\nvec3 brightnessToColor(float b) {\n    b*=0.250;\n\n    return vec3(b,b*b, b*b*b*b)*3.;\n}\n\nfloat  supersun() {\n    float sum = 0.;\n    sum += textureCube(uPerlin, vLayer0).r;\n    sum += textureCube(uPerlin, vLayer1).r;\n    sum += textureCube(uPerlin, vLayer2).r;\n    sum *= 0.33;\n    return sum;\n}\n\nvoid main(){\n    float brightness = supersun();\n    brightness = brightness*4. + 1.;\n// gl_FragColor = vec4();\nfloat fres = Fresnel(eyeVector, vNormal);\n    brightness += pow(fres, 0.8);\n    vec3 col = brightnessToColor(brightness);\n    gl_FragColor = vec4(col,1.);\n    // gl_FragColor = vec4(fres);\n// gl_FragColor = vec4(vLayer2, 1.);\n// gl_FragColor = vec4(vUv,1.,1.);\n// gl_FragColor = vec4(1.,0.,1.,1.);\n}";
+},{}],"js/shaderAround/vertex.glsl":[function(require,module,exports) {
+module.exports = "#define GLSLIFY 1\nuniform float time;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nuniform vec2 pixels;\nfloat PI = 3.141592653589793238;\n\nvarying vec3 vLayer0;\nvarying vec3 vLayer1;\nvarying vec3 vLayer2;\nvarying vec3 eyeVector;\nvarying vec3 vNormal;\n\nmat2 rotate(float a ) {\n  float s = sin(a);\n  float c = cos(a);\n  return mat2(c, -s, s, c);\n}\n\nvoid main() {\n  vNormal = normal;\n\n  vec4 worldPosition = modelMatrix *vec4( position, 1.0);\n  eyeVector = normalize(worldPosition.xyz - cameraPosition);\n\n  float t = time*0.005;\n\n mat2 rot = rotate(t);\n\n  vec3 p0 = position;\n  p0.yz = rot*p0.yz;\n  vLayer0 = p0;\n\n mat2 rot1 = rotate(t + 10.);\n  vec3 p1 = position;\n  p1.xz = rot1*p1.xz;\n  vLayer1 = p1;\n\nmat2 rot2 = rotate(t + 30.);\n  vec3 p2 = position;\n  p2.xy = rot2*p2.xy;\n  vLayer2 = p2;\n\n  vUv = uv;\n  vPosition = position;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1. );\n}";
+},{}],"js/shaderAround/fragment.glsl":[function(require,module,exports) {
+module.exports = "#define GLSLIFY 1\nuniform float time;\nuniform float progress;\nuniform sampler2D texture1;\nuniform vec4 resolution;\nuniform samplerCube uPerlin;\nvarying vec2 vUv;\nvarying vec3 vPosition;\nvarying vec3 vNormal;\nvarying vec3 vLayer0;\nvarying vec3 vLayer1;\nvarying vec3 vLayer2;\nvarying vec3 eyeVector;\nfloat PI=3.141592653589793238;\n\nfloat Fresnel(vec3 eyeVector, vec3 worldNormal) {\n  return pow(1.0 + dot(eyeVector, worldNormal), 3.0);\n}\n\nvec3 brightnessToColor(float b) {\n    b*=0.250;\n\n    return vec3(b,b*b, b*b*b*b)*3.;\n}\n\nfloat  supersun() {\n    float sum = 0.;\n    sum += textureCube(uPerlin, vLayer0).r;\n    sum += textureCube(uPerlin, vLayer1).r;\n    sum += textureCube(uPerlin, vLayer2).r;\n    sum *= 0.33;\n    return sum;\n}\n\nvoid main(){\n    // float brightness = supersun();\n    // brightness = brightness*4. + 1.;\n// gl_FragColor = vec4();\n// float fres = Fresnel(eyeVector, vNormal);\n//     brightness += fres;\n    float radial = 1. - vPosition.z;\n    radial *= radial*radial;\n\n    float brightness = 1. + radial*0.83;\n\n    gl_FragColor.rgb = brightnessToColor(brightness)*radial;\n    gl_FragColor.a = radial;\n\n    // vec3 col = brightnessToColor(brightness);\n    // gl_FragColor = vec4(col,1.);\n    //  gl_FragColor = vec4(radial,0.,0.,1.);\n    // gl_FragColor = vec4(fres);\n// gl_FragColor = vec4(vLayer2, 1.);\n// gl_FragColor = vec4(vUv,1.,1.);\n// gl_FragColor = vec4(1.,0.,1.,1.);\n}";
 },{}],"node_modules/three-orbit-controls/index.js":[function(require,module,exports) {
 module.exports = function( THREE ) {
 	/**
@@ -37941,6 +37945,10 @@ var _vertex2 = _interopRequireDefault(require("./shaderSun/vertex.glsl"));
 
 var _fragment2 = _interopRequireDefault(require("./shaderSun/fragment.glsl"));
 
+var _vertex3 = _interopRequireDefault(require("./shaderAround/vertex.glsl"));
+
+var _fragment3 = _interopRequireDefault(require("./shaderAround/fragment.glsl"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function () { return cache; }; return cache; }
@@ -37968,7 +37976,7 @@ function () {
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(this.width, this.height);
-    this.renderer.setClearColor(0xeeeeee, 1);
+    this.renderer.setClearColor(0x000000, 1);
     this.renderer.outputEncoding = THREE.sRGBEncoding;
     this.container.appendChild(this.renderer.domElement);
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.001, 1000); // var frustumSize = 10;
@@ -37979,6 +37987,7 @@ function () {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.time = 0;
     this.isPlaying = true;
+    this.addAround();
     this.addTexture();
     this.addObjects();
     this.resize();
@@ -37987,6 +37996,41 @@ function () {
   }
 
   _createClass(Sketch, [{
+    key: "addAround",
+    value: function addAround() {
+      var that = this;
+      this.materialAround = new THREE.ShaderMaterial({
+        extensions: {
+          derivatives: "#extension GL_OES_standard_derivatives : enable"
+        },
+        side: THREE.BackSide,
+        uniforms: {
+          time: {
+            type: "f",
+            value: 0
+          },
+          uPerlin: {
+            value: null
+          },
+          resolution: {
+            type: "v4",
+            value: new THREE.Vector4()
+          },
+          uvRate1: {
+            value: new THREE.Vector2(1, 1)
+          }
+        },
+        // wireframe: true,
+        // transparent: true,
+        vertexShader: _vertex3.default,
+        fragmentShader: _fragment3.default
+      });
+      this.geometry = new THREE.SphereBufferGeometry(1.2, 30, 30);
+      this.sunAround = new THREE.Mesh(this.geometry, this.materialAround); // this.sun = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({color: 0xff0000}));
+
+      this.scene.add(this.sunAround);
+    }
+  }, {
     key: "addTexture",
     value: function addTexture() {
       this.scene1 = new THREE.Scene();
@@ -38021,7 +38065,7 @@ function () {
         vertexShader: _vertex.default,
         fragmentShader: _fragment.default
       });
-      this.geometry = new THREE.SphereBufferGeometry(0.99, 30, 30);
+      this.geometry = new THREE.SphereBufferGeometry(1, 30, 30);
       this.perlin = new THREE.Mesh(this.geometry, this.materialPerlin);
       this.scene1.add(this.perlin);
     }
@@ -38118,7 +38162,7 @@ exports.default = Sketch;
 new Sketch({
   dom: document.getElementById("container")
 });
-},{"three":"node_modules/three/build/three.module.js","./shader/fragment.glsl":"js/shader/fragment.glsl","./shader/vertex.glsl":"js/shader/vertex.glsl","./shaderSun/vertex.glsl":"js/shaderSun/vertex.glsl","./shaderSun/fragment.glsl":"js/shaderSun/fragment.glsl","three-orbit-controls":"node_modules/three-orbit-controls/index.js"}],"../AppData/Roaming/npm/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+},{"three":"node_modules/three/build/three.module.js","./shader/fragment.glsl":"js/shader/fragment.glsl","./shader/vertex.glsl":"js/shader/vertex.glsl","./shaderSun/vertex.glsl":"js/shaderSun/vertex.glsl","./shaderSun/fragment.glsl":"js/shaderSun/fragment.glsl","./shaderAround/vertex.glsl":"js/shaderAround/vertex.glsl","./shaderAround/fragment.glsl":"js/shaderAround/fragment.glsl","three-orbit-controls":"node_modules/three-orbit-controls/index.js"}],"../AppData/Roaming/npm/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -38146,7 +38190,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "55008" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "63253" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

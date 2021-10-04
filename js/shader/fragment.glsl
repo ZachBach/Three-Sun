@@ -153,11 +153,13 @@ vec4 j1=permute(permute(permute(permute(
 			}
 
 			
+
+			
 			void main(){
 				// vec2 newUV = (vUv - vec2(0.5))*resolution.zw + vec2(0.5);
-					vec4 p = vec4(vPosition*3.,time*0.05);
+					vec4 p = vec4(vPosition*4.,time*0.0005);
 					float noisy = fbm(p);
-					vec4 p1 = vec4(vPosition*2.,time*0.05);
+					vec4 p1 = vec4(vPosition*2.,time*0.005);
 					float spots = max(snoise(p1),0.);
 					gl_FragColor = vec4(noisy);
 					// gl_FragColor=vec4(vPosition,1.);

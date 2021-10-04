@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import fragment from "./shader/fragment.glsl";
 import vertex from "./shader/vertex.glsl";
+import vertexSun from "./shaderSun/vertex.glsl";
+import fragmentSun from "./shaderSun/fragment.glsl";
+import { MeshBasicMaterial } from "three";
+
 let OrbitControls = require("three-orbit-controls")(THREE);
 
 export default class Sketch {
@@ -43,13 +47,36 @@ export default class Sketch {
   }
 
   addTexture() {
+    this.scene1 = new THREE.Scene();
     this.cubeRenderTarget1 = new THREE.WebGLCubeRenderTarget( 256, {
       format: THREE.RGBFormat,
       generateMipmaps: true,
       minFilter: THREE.LinearMipmapLinearFilter,
       encoding: THREE.sRGBEncoding // temporary -- to prevent the material's shader from recompiling every frame
     } );
-    cubeCamera1 = new THREE.CubeCamera( 0.1, 10, this.cubeRenderTarget1 );
+    this.cubeCamera1 = new THREE.CubeCamera( 0.1, 10, this.cubeRenderTarget1 );
+
+    this.materialPerlin = new THREE.ShaderMaterial({
+      extensions: {
+        derivatives: "#extension GL_OES_standard_derivatives : enable"
+      },
+      side: THREE.DoubleSide,
+      uniforms: {
+        time: { type: "f", value: 0 },
+        resolution: { type: "v4", value: new THREE.Vector4() },
+        uvRate1: {
+          value: new THREE.Vector2(1, 1)
+        }
+      },
+      // wireframe: true,
+      // transparent: true,
+      vertexShader: vertex,
+      fragmentShader: fragment
+    });
+    this.geometry = new THREE.SphereBufferGeometry(0.99, 30, 30);
+
+    this.perlin = new THREE.Mesh(this.geometry, this.materialPerlin);
+    this.scene1.add(this.perlin);
   }
 
   settings() {
@@ -75,13 +102,14 @@ export default class Sketch {
 
   addObjects() {
     let that = this;
-    this.material = new THREE.ShaderMaterial({
+    this.materialSun = new THREE.ShaderMaterial({
       extensions: {
         derivatives: "#extension GL_OES_standard_derivatives : enable"
       },
       side: THREE.DoubleSide,
       uniforms: {
         time: { type: "f", value: 0 },
+        uPerlin: { value: null },
         resolution: { type: "v4", value: new THREE.Vector4() },
         uvRate1: {
           value: new THREE.Vector2(1, 1)
@@ -89,14 +117,15 @@ export default class Sketch {
       },
       // wireframe: true,
       // transparent: true,
-      vertexShader: vertex,
-      fragmentShader: fragment
+      vertexShader: vertexSun,
+      fragmentShader: fragmentSun
     });
 
     this.geometry = new THREE.SphereBufferGeometry(1, 30, 30);
 
-    this.plane = new THREE.Mesh(this.geometry, this.material);
-    this.scene.add(this.plane);
+    this.sun = new THREE.Mesh(this.geometry, this.materialSun);
+    // this.sun = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({color: 0xff0000}));
+    this.scene.add(this.sun);
   }
 
   stop() {
@@ -113,12 +142,13 @@ export default class Sketch {
   render() {
     if (!this.isPlaying) return;
 
-    this.cubeCamera1.update( this.renderer, this.scene );
-		// material.envMap = cubeRenderTarget2.texture;
+    this.cubeCamera1.update( this.renderer, this.scene1 );
+    this.materialSun.uniforms.uPerlin.value = this.cubeRenderTarget1.texture;
 
 
     this.time += 0.05;
-    this.material.uniforms.time.value = this.time;
+    this.materialSun.uniforms.time.value = this.time;
+    this.materialPerlin.uniforms.time.value = this.time;
     requestAnimationFrame(this.render.bind(this));
     this.renderer.render(this.scene, this.camera);
   }

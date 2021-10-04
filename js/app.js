@@ -33,12 +33,23 @@ export default class Sketch {
     this.time = 0;
 
     this.isPlaying = true;
-    
+
+    this.addTexture();
     this.addObjects();
     this.resize();
     this.render();
     this.setupResize();
     // this.settings();
+  }
+
+  addTexture() {
+    this.cubeRenderTarget1 = new THREE.WebGLCubeRenderTarget( 256, {
+      format: THREE.RGBFormat,
+      generateMipmaps: true,
+      minFilter: THREE.LinearMipmapLinearFilter,
+      encoding: THREE.sRGBEncoding // temporary -- to prevent the material's shader from recompiling every frame
+    } );
+    cubeCamera1 = new THREE.CubeCamera( 0.1, 10, this.cubeRenderTarget1 );
   }
 
   settings() {
@@ -101,6 +112,11 @@ export default class Sketch {
 
   render() {
     if (!this.isPlaying) return;
+
+    this.cubeCamera1.update( this.renderer, this.scene );
+		// material.envMap = cubeRenderTarget2.texture;
+
+
     this.time += 0.05;
     this.material.uniforms.time.value = this.time;
     requestAnimationFrame(this.render.bind(this));

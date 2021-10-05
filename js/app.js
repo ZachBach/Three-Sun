@@ -7,7 +7,6 @@ import vertexAround from "./shaderAround/vertex.glsl";
 import fragmentAround from "./shaderAround/fragment.glsl";
 
 
-
 let OrbitControls = require("three-orbit-controls")(THREE);
 
 export default class Sketch {
